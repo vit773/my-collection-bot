@@ -1,7 +1,6 @@
 import telebot
 import os
 from flask import Flask, request
-import traceback
 
 # ==================== НАСТРОЙКИ ====================
 TOKEN = os.getenv("TOKEN")
@@ -11,14 +10,15 @@ GROUP_ID = int(os.getenv("GROUP_ID"))
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-print("🤖 Бот запущен — ВСЁ (текст + медиа) работает")
+print("🤖 Бот запущен и работает")
 
-# Приветствие
+# Приветствие при /start
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.send_message(message.chat.id, "✅ Привет! Присылай что угодно — текст, фото, видео, ролики, файлы — всё будет в группе.")
+    bot.send_message(message.chat.id,
+        "Привет! Отправь фото, видео или интересную новость которой хочешь поделиться. Спасибо!")
 
-# ←←← ГЛАВНОЕ ИСПРАВЛЕНИЕ: ловим ВСЕ типы контента из лички ←←←
+# Пересылка всего из лички + ответ «Спасибо!»
 @bot.message_handler(content_types=[
     'text', 'photo', 'video', 'document', 'audio', 'voice',
     'video_note', 'sticker', 'animation', 'poll', 'dice'
@@ -27,28 +27,23 @@ def forward_to_group(message):
     if message.chat.type != 'private':
         return
     
-    print(f"📨 Приватное сообщение от {message.chat.id} | Тип: {message.content_type} | ID: {message.message_id}")
     try:
         bot.forward_message(
             chat_id=GROUP_ID,
             from_chat_id=message.chat.id,
             message_id=message.message_id
         )
-        print("✅ Успешно переслано в группу")
-        bot.send_message(message.chat.id, "✅ Получено и переслано в группу!")
+        # Новый ответ пользователю
+        bot.send_message(message.chat.id, "Спасибо!")
     except Exception as e:
-        error = f"❌ Ошибка: {str(e)}"
-        print(error)
-        bot.send_message(message.chat.id, error)
+        print(f"Ошибка: {e}")
+        bot.send_message(message.chat.id, "Спасибо!")  # даже при ошибке говорим спасибо
 
+# ==================== WEBHOOK ====================
 @app.route('/' + TOKEN, methods=['POST'])
 def webhook():
-    try:
-        update = telebot.types.Update.de_json(request.get_json())
-        bot.process_new_updates([update])
-        print("✅ Update обработан успешно")
-    except Exception as e:
-        print(f"❌ Ошибка в webhook: {e}")
+    update = telebot.types.Update.de_json(request.get_json())
+    bot.process_new_updates([update])
     return 'OK', 200
 
 @app.route('/')
