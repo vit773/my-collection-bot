@@ -3,30 +3,30 @@ import os
 from flask import Flask, request
 import traceback
 
-# debug redeploy 3
-
 # ==================== НАСТРОЙКИ ====================
 TOKEN = os.getenv("TOKEN")
 GROUP_ID = int(os.getenv("GROUP_ID"))
 # ===================================================
 
-bot = telebot.TeleBot(TOKEN)
+# ←←← ГЛАВНОЕ ИСПРАВЛЕНИЕ ←←←
+bot = telebot.TeleBot(TOKEN, threaded=False)
+
 app = Flask(__name__)
 
-print("🤖 Бот запущен в режиме отладки")
+print("🤖 Бот запущен в режиме отладки (threaded=False)")
 
-# Приветствие
-@bot.message_handler(commands=['start'])
-def start(message):
-    print(f"[START] от {message.chat.id}")
-    bot.send_message(message.chat.id, "✅ Привет! Я в режиме отладки. Присылай что угодно.")
+# Супер-отладочный хендлер — ловит ВСЁ
+@bot.message_handler(func=lambda m: True)
+def debug_all_messages(message):
+    print(f"📨 DEBUG: Сообщение получено! Chat type = '{message.chat.type}' | Content type = '{message.content_type}' | From = {message.chat.id}")
+    if message.text:
+        print(f"Текст: {message.text}")
 
-# ←←← НОВЫЙ ОТЛАДОЧНЫЙ ХЕНДЛЕР ←←←
+# Основной обработчик (теперь должен сработать)
 @bot.message_handler(func=lambda message: message.chat.type == 'private')
 def forward_to_group(message):
-    print(f"📨 Получено приватное сообщение от {message.chat.id} | Тип: {message.content_type}")
+    print(f"📨 Приватное сообщение от {message.chat.id} | Тип: {message.content_type}")
     try:
-        # Пересылаем в группу
         bot.forward_message(
             chat_id=GROUP_ID,
             from_chat_id=message.chat.id,
@@ -37,12 +37,8 @@ def forward_to_group(message):
     except Exception as e:
         error_text = f"❌ Ошибка: {str(e)}\n{traceback.format_exc()}"
         print(error_text)
-        try:
-            bot.send_message(message.chat.id, f"⚠️ Ошибка пересылки:\n{str(e)}")
-        except:
-            print("Не удалось даже отправить сообщение об ошибке пользователю")
+        bot.send_message(message.chat.id, f"⚠️ Ошибка: {str(e)}")
 
-# Webhook
 @app.route('/' + TOKEN, methods=['POST'])
 def webhook():
     try:
@@ -55,7 +51,7 @@ def webhook():
 
 @app.route('/')
 def index():
-    return 'Бот работает! 🚀 (отладочная версия)'
+    return 'Бот работает! 🚀 (threaded=False версия)'
 
 # Установка webhook
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
