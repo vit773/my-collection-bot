@@ -8,21 +8,17 @@ TOKEN = os.getenv("TOKEN")
 GROUP_ID = int(os.getenv("GROUP_ID"))
 # ===================================================
 
-# ←←← ГЛАВНОЕ ИСПРАВЛЕНИЕ ←←←
 bot = telebot.TeleBot(TOKEN, threaded=False)
-
 app = Flask(__name__)
 
-print("🤖 Бот запущен в режиме отладки (threaded=False)")
+print("🤖 Бот запущен (исправленная версия)")
 
-# Супер-отладочный хендлер — ловит ВСЁ
-@bot.message_handler(func=lambda m: True)
-def debug_all_messages(message):
-    print(f"📨 DEBUG: Сообщение получено! Chat type = '{message.chat.type}' | Content type = '{message.content_type}' | From = {message.chat.id}")
-    if message.text:
-        print(f"Текст: {message.text}")
+# 1. Приветствие
+@bot.message_handler(commands=['start'])
+def start(message):
+    bot.send_message(message.chat.id, "✅ Привет! Я твой сборщик. Присылай что угодно — я перешлю в группу.")
 
-# Основной обработчик (теперь должен сработать)
+# 2. Основной обработчик — ПЕРВЫМ! (важно!)
 @bot.message_handler(func=lambda message: message.chat.type == 'private')
 def forward_to_group(message):
     print(f"📨 Приватное сообщение от {message.chat.id} | Тип: {message.content_type}")
@@ -35,10 +31,16 @@ def forward_to_group(message):
         print("✅ Успешно переслано в группу")
         bot.send_message(message.chat.id, "✅ Получено и переслано в группу!")
     except Exception as e:
-        error_text = f"❌ Ошибка: {str(e)}\n{traceback.format_exc()}"
-        print(error_text)
-        bot.send_message(message.chat.id, f"⚠️ Ошибка: {str(e)}")
+        error = f"❌ Ошибка пересылки: {str(e)}"
+        print(error)
+        bot.send_message(message.chat.id, error)
 
+# 3. Отладка — только если ничего выше не сработало
+@bot.message_handler(func=lambda m: True)
+def debug_all(message):
+    print(f"📨 DEBUG (не обработано выше): Chat type = '{message.chat.type}' | From = {message.chat.id}")
+
+# ==================== WEBHOOK ====================
 @app.route('/' + TOKEN, methods=['POST'])
 def webhook():
     try:
@@ -51,9 +53,8 @@ def webhook():
 
 @app.route('/')
 def index():
-    return 'Бот работает! 🚀 (threaded=False версия)'
+    return 'Бот работает! 🚀'
 
-# Установка webhook
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 if WEBHOOK_URL:
     bot.remove_webhook()
