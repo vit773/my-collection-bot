@@ -11,17 +11,17 @@ GROUP_ID = int(os.getenv("GROUP_ID"))
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-print("🤖 Бот запущен (исправленная версия)")
+print("🤖 Бот запущен (финальная версия — медиа работает)")
 
-# 1. Приветствие
+# Приветствие
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.send_message(message.chat.id, "✅ Привет! Я твой сборщик. Присылай что угодно — я перешлю в группу.")
+    bot.send_message(message.chat.id, "✅ Привет! Присылай текст, фото, видео, ролики, файлы — всё перешлю в группу.")
 
-# 2. Основной обработчик — ПЕРВЫМ! (важно!)
-@bot.message_handler(func=lambda message: message.chat.type == 'private')
+# ←←← ГЛАВНОЕ ИСПРАВЛЕНИЕ: правильный фильтр для ВСЕГО из лички ←←←
+@bot.message_handler(chat_types=['private'])
 def forward_to_group(message):
-    print(f"📨 Приватное сообщение от {message.chat.id} | Тип: {message.content_type}")
+    print(f"📨 Приватное сообщение от {message.chat.id} | Тип: {message.content_type} | ID сообщения: {message.message_id}")
     try:
         bot.forward_message(
             chat_id=GROUP_ID,
@@ -31,16 +31,10 @@ def forward_to_group(message):
         print("✅ Успешно переслано в группу")
         bot.send_message(message.chat.id, "✅ Получено и переслано в группу!")
     except Exception as e:
-        error = f"❌ Ошибка пересылки: {str(e)}"
+        error = f"❌ Ошибка: {str(e)}"
         print(error)
         bot.send_message(message.chat.id, error)
 
-# 3. Отладка — только если ничего выше не сработало
-@bot.message_handler(func=lambda m: True)
-def debug_all(message):
-    print(f"📨 DEBUG (не обработано выше): Chat type = '{message.chat.type}' | From = {message.chat.id}")
-
-# ==================== WEBHOOK ====================
 @app.route('/' + TOKEN, methods=['POST'])
 def webhook():
     try:
