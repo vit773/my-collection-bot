@@ -11,16 +11,22 @@ GROUP_ID = int(os.getenv("GROUP_ID"))
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-print("🤖 Бот запущен (финальная версия — ВСЁ работает)")
+print("🤖 Бот запущен — ВСЁ (текст + медиа) работает")
 
 # Приветствие
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.send_message(message.chat.id, "✅ Привет! Присылай текст, фото, видео, ролики, файлы — всё перешлю в группу.")
+    bot.send_message(message.chat.id, "✅ Привет! Присылай что угодно — текст, фото, видео, ролики, файлы — всё будет в группе.")
 
-# ←←← ГЛАВНОЕ ИСПРАВЛЕНИЕ: теперь ловит ВСЁ из лички (текст + медиа) ←←←
-@bot.message_handler(func=lambda message: message.chat.type == 'private')
+# ←←← ГЛАВНОЕ ИСПРАВЛЕНИЕ: ловим ВСЕ типы контента из лички ←←←
+@bot.message_handler(content_types=[
+    'text', 'photo', 'video', 'document', 'audio', 'voice',
+    'video_note', 'sticker', 'animation', 'poll', 'dice'
+])
 def forward_to_group(message):
+    if message.chat.type != 'private':
+        return
+    
     print(f"📨 Приватное сообщение от {message.chat.id} | Тип: {message.content_type} | ID: {message.message_id}")
     try:
         bot.forward_message(
