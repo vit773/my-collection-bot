@@ -3,6 +3,8 @@ import os
 from flask import Flask, request
 import traceback
 
+# debug redeploy 3
+
 # ==================== НАСТРОЙКИ ====================
 TOKEN = os.getenv("TOKEN")
 GROUP_ID = int(os.getenv("GROUP_ID"))
