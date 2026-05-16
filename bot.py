@@ -1,48 +1,61 @@
 import telebot
 import os
 from flask import Flask, request
+import traceback
 
 # ==================== НАСТРОЙКИ ====================
-TOKEN = os.getenv("TOKEN")          # ← Render сам подставит
-GROUP_ID = int(os.getenv("GROUP_ID"))  # ← Render сам подставит
+TOKEN = os.getenv("TOKEN")
+GROUP_ID = int(os.getenv("GROUP_ID"))
 # ===================================================
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
+print("🤖 Бот запущен в режиме отладки")
+
 # Приветствие
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.send_message(message.chat.id, 
-        "✅ Привет! Я твой сборщик контента.\n\n"
-        "Присылай мне в личку любые сообщения, фото, видео, ролики, файлы — "
-        "я сразу перешлю их в твою супергруппу.")
+    print(f"[START] от {message.chat.id}")
+    bot.send_message(message.chat.id, "✅ Привет! Я в режиме отладки. Присылай что угодно.")
 
-# Пересылка всего из лички
+# ←←← НОВЫЙ ОТЛАДОЧНЫЙ ХЕНДЛЕР ←←←
 @bot.message_handler(func=lambda message: message.chat.type == 'private')
 def forward_to_group(message):
+    print(f"📨 Получено приватное сообщение от {message.chat.id} | Тип: {message.content_type}")
     try:
+        # Пересылаем в группу
         bot.forward_message(
             chat_id=GROUP_ID,
             from_chat_id=message.chat.id,
             message_id=message.message_id
         )
-        bot.send_message(message.chat.id, "✅ Получено и переслано!")
-    except:
-        bot.send_message(message.chat.id, "⚠️ Ошибка пересылки.")
+        print("✅ Успешно переслано в группу")
+        bot.send_message(message.chat.id, "✅ Получено и переслано в группу!")
+    except Exception as e:
+        error_text = f"❌ Ошибка: {str(e)}\n{traceback.format_exc()}"
+        print(error_text)
+        try:
+            bot.send_message(message.chat.id, f"⚠️ Ошибка пересылки:\n{str(e)}")
+        except:
+            print("Не удалось даже отправить сообщение об ошибке пользователю")
 
-# ==================== WEBHOOK ====================
+# Webhook
 @app.route('/' + TOKEN, methods=['POST'])
 def webhook():
-    update = telebot.types.Update.de_json(request.get_json())
-    bot.process_new_updates([update])
+    try:
+        update = telebot.types.Update.de_json(request.get_json())
+        bot.process_new_updates([update])
+        print("✅ Update обработан успешно")
+    except Exception as e:
+        print(f"❌ Ошибка в webhook: {e}")
     return 'OK', 200
 
 @app.route('/')
 def index():
-    return 'Бот работает! 🚀'
+    return 'Бот работает! 🚀 (отладочная версия)'
 
-# Автоматическая установка webhook при запуске (если указано в Render)
+# Установка webhook
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 if WEBHOOK_URL:
     bot.remove_webhook()
